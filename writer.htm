@@ -37,15 +37,26 @@
     <p id="write-space"><span id="cursor">|</span></p>
   </div>
 <script>
+
 const mcont = document.getElementById("main-container");
 const space = document.getElementById("write-space");
 const cursor = document.getElementById("cursor");
-const getText = () => {
+
+mcont.addEventListener("focus", (event) => {
+  mcont.addEventListener("keydown", keyfuncs);
+});
+
+mcont.addEventListener("blur", (event) => {
+  mcont.removeEventListener("keydown", keyfuncs);
+});
+
+function getText() {
   const nodes = Array.from(space.childNodes);
   return nodes.length === 3 && [ nodes[0], nodes[2] ] ||
       nodes[0].nodeValue && [ nodes[0], null ] || [ null, nodes[1] ];
-};
-const charEdit = (value) => {
+}
+
+function charEdit(value) {
   const [ precurs, postcur ] = getText();
   if (value === -1 && precurs) {
     precurs.nodeValue = precurs.nodeValue.slice(0, -1);
@@ -64,9 +75,45 @@ const charEdit = (value) => {
   if (precurs && precurs.nodeValue.length === 0) {
     space.removeChild(precurs);
   }
-};
-const moveCurs = (direction) => {};
-const keyfuncs = (event) => {
+}
+
+function getChar(textNodeValue, isToTheLeft) {
+  const pos = isToTheLeft && -1 || 0;
+  return textNodeValue.split('\n').at(pos).at(pos);
+}
+
+function getString(textNodeValue, isToTheLeft) {};
+
+function moveCurs(directionKeyName) {
+  const dname = directionKeyName.replace("Arrow", '');
+  const [ precurs, postcur ] = getText();
+
+  if (precurs && dname === "Left") {
+    const char =  getChar(precurs.nodeValue, true);
+    charEdit(-1);
+    if (postcur) {
+      postcur.nodeValue = char + postcur.nodeValue;
+    } else {
+      space.appendChild(document.createTextNode(char));
+    }
+  }
+
+  if (precurs && dname === "Up") {
+    const str = getString(precurs.nodeValue, true);
+  }
+
+  if (postcur && dname === "Right") {
+    const char = getChar(postcur.nodeValue, false);
+    charEdit(+1);
+    charEdit(char);
+  }
+
+  if (postcur && dname === "Down") {
+    const str = getString(postcur.nodeValue, false);
+  }
+}
+
+function keyfuncs(event) {
   switch(event.key) {
     case "Backspace":
       charEdit(-1);
@@ -76,6 +123,12 @@ const keyfuncs = (event) => {
       break;
     case "Enter":
       charEdit('\n');
+      break;
+    case "ArrowLeft":
+    case "ArrowRight":
+    case "ArrowUp":
+    case "ArrowDown":
+      moveCurs(event.key);
       break;
     case "Tab":
     case "Shift":
@@ -87,12 +140,7 @@ const keyfuncs = (event) => {
       charEdit(event.key);
   }
 }
-mcont.addEventListener("focus", (event) => {
-  mcont.addEventListener("keydown", keyfuncs);
-});
-mcont.addEventListener("blur", (event) => {
-  mcont.removeEventListener("keydown", keyfuncs);
-});
+
 </script>
 </body>
 </html>
