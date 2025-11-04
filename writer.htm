@@ -51,9 +51,9 @@ const charEdit = (value) => {
     precurs.nodeValue = precurs.nodeValue.slice(0, -1);
   } else if (value === +1 && postcur) {
     postcur.nodeValue = postcur.nodeValue.slice(1);
-  } else if (!precurs) {
+  } else if (typeof value === "string" && !precurs) {
     space.insertBefore(document.createTextNode(value), cursor);
-  } else {
+  } else if (typeof value === "string") {
     precurs.nodeValue = precurs.nodeValue + value;
   }
   // Instead of a separate function to call to clear empty nodes,
