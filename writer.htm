@@ -41,21 +41,8 @@ const getText = () => {
   return nodes.length === 3 && [ nodes[0], nodes[2] ] ||
       nodes[0].nodeValue && [ nodes[0], null ] || [ null, nodes[1] ];
 };
-const cleanText = () => { 
-  // hit return for new line then erase that new line then tab leads to empty
-  // post-cursor text. haven't reasoned out how charedit allows that yet so 
-  // made this cleaning function
-  const [ precurs, postcur ] = getText();
-  if (postcur.nodeValue.length === 0) {
-    space.removeChild(postcur);
-  }
-  if (precurs.nodeValue.length === 0) {
-    space.removeChild(precurs);
-  }
-};
 const charEdit = (value) => {
   const [ precurs, postcur ] = getText();
-  // cleanText(); nope this then causes Delete to not work
   if (value === -1 && precurs) {
     precurs.nodeValue = precurs.nodeValue.slice(0, -1);
   } else if (value === +1 && postcur) {
@@ -64,6 +51,14 @@ const charEdit = (value) => {
     space.insertBefore(document.createTextNode(value), cursor);
   } else {
     precurs.nodeValue = precurs.nodeValue + value;
+  }
+  // Instead of a separate function to call to clear empty nodes,
+  // just clear any empty nodes after edit logic.
+  if (postcur && postcur.nodeValue.length === 0) {
+    space.removeChild(postcur);
+  }
+  if (precurs && precurs.nodeValue.length === 0) {
+    space.removeChild(precurs);
   }
 };
 const moveCurs = (direction) => {};
