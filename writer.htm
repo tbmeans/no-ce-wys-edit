@@ -77,39 +77,79 @@ function charEdit(value) {
   }
 }
 
+// THIS NEEDED TO INCLUDE THE NEWLINES AS GETTABLE CHARS RATHER THAN SPLIT THEM AWAY
 function getChar(textNodeValue, isToTheLeft) {
-  const pos = isToTheLeft && -1 || 0;
-  return textNodeValue.split('\n').at(pos).at(pos);
+  return textNodeValue.at(isToTheLeft && -1 || 0);
 }
-
-function getString(textNodeValue, isToTheLeft) {};
 
 function moveCurs(directionKeyName) {
   const dname = directionKeyName.replace("Arrow", '');
   const [ precurs, postcur ] = getText();
 
   if (precurs && dname === "Left") {
-    const char =  getChar(precurs.nodeValue, true);
+    const char = getChar(precurs.nodeValue, true);
     charEdit(-1);
     if (postcur) {
       postcur.nodeValue = char + postcur.nodeValue;
     } else {
       space.appendChild(document.createTextNode(char));
     }
-  }
-
-  if (precurs && dname === "Up") {
-    const str = getString(precurs.nodeValue, true);
+    return;
   }
 
   if (postcur && dname === "Right") {
     const char = getChar(postcur.nodeValue, false);
     charEdit(+1);
     charEdit(char);
+    return;
   }
 
-  if (postcur && dname === "Down") {
-    const str = getString(postcur.nodeValue, false);
+  // The logic of up and down comes down to shifting characters to
+  // opposite side of cursor, dependent especially on the characters
+  // from the cursor to the beginning of the line on which the cursor
+  // is currently located. 
+
+  const fin = precurs ? precurs.nodeValue.lastIndexOf('\n') + 1 : 0;
+  const len = precurs ? precurs.nodeValue.slice(fin).length : 0;
+
+  if (fin === 0 && dname === "Up") {
+      return;
+    }
+
+  if (dname === "Up") {
+    const pen = precurs.nodeValue.slice(0, fin - 1).lastIndexOf('\n') + 1;
+    const cutpre = precurs.nodeValue.slice(pen + len);
+    precurs.nodeValue = precurs.nodeValue.slice(0, pen + len);
+    if (precurs.nodeValue.length === 0) {
+      space.removeChild(precurs);
+    }
+    if (postcur) {
+      postcur.nodeValue = cutpre + postcur.nodeValue;
+    } else {
+      space.appendChild(document.createTextNode(cutpre));
+    }
+    return;
+  }
+
+  // Only case remaining is direction down.
+
+  const ini = postcur ? postcur.nodeValue.indexOf('\n') + 1 : 0;
+
+  if (ini === 0) {
+    return;
+  }
+
+  const cutpos = postcur.nodeValue.slice(0, ini + len);
+  postcur.nodeValue = postcur.nodeValue.slice(ini + len);
+
+  if (postcur.nodeValue.length === 0) {
+    space.removeChild(postcur);
+  }
+
+  if (precurs) {
+    precurs.nodeValue += cutpos;
+  } else {
+    space.insertBefore(document.createTextNode(cutpos), cursor);
   }
 }
 
