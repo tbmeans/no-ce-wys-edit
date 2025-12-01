@@ -154,6 +154,10 @@ function moveCurs(directionKeyName) {
 }
 
 function keyfuncs(event) {
+  if (event.key === "PageUp" || event.key === "PageDown") {
+    return;
+  }
+  event.preventDefault();
   switch(event.key) {
     case "Backspace":
       charEdit(-1);
@@ -168,6 +172,8 @@ function keyfuncs(event) {
     case "ArrowRight":
     case "ArrowUp":
     case "ArrowDown":
+    case "Home":
+    case "End":
       moveCurs(event.key);
       break;
     case "Tab":
@@ -175,6 +181,7 @@ function keyfuncs(event) {
     case "Control":
     case "CapsLock":
     case "NumLock":
+    case "Insert":
       break;
     default:
       charEdit(event.key);
