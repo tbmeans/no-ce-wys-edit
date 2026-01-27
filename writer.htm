@@ -112,10 +112,13 @@ function moveCurs(directionKeyName) {
   const fin = precurs ? precurs.nodeValue.lastIndexOf('\n') + 1 : 0;
   const len = precurs ? precurs.nodeValue.slice(fin).length : 0;
 
-  if (fin === 0 && dname === "Up") {
-      return;
-    }
+  // If no precursor, consider both Left and Up directions.
+  if (fin === 0 && (dname === "Up" || dname === "Left")) {
+    return;
+  }
 
+  // still have problem of up becoming just left when whitespace
+  // separates lines
   if (dname === "Up") {
     const pen = precurs.nodeValue.slice(0, fin - 1).lastIndexOf('\n') + 1;
     const cutpre = precurs.nodeValue.slice(pen + len);
@@ -132,10 +135,11 @@ function moveCurs(directionKeyName) {
   }
 
   // Only case remaining is direction down.
+  // Actually Right with no postcursor also comes here.
 
   const ini = postcur ? postcur.nodeValue.indexOf('\n') + 1 : 0;
 
-  if (ini === 0) {
+  if (ini === 0) { // This also serves Right w/o postcursor case.
     return;
   }
 
