@@ -64,17 +64,10 @@ function charEdit(value) {
   const curnode = cursor.previousSibling;
   const curline = cursor.parentElement;
   const curpara = curline.parentElement;
+  const isAtBlankLine = curnode.textContent.length === 0;
 
-  if (value === "Enter" && curnode.textContent.length > 0) {
-  /* new line w/in cur paragraph */
-    const nexline = document.createElement("SPAN");
-    nexline.appendChild(document.createTextNode(''));
-    curpara.appendChild(document.createElement("BR"));
-    curpara.appendChild(nexline);
-    curline.removeChild(cursor);
-    nexline.appendChild(cursor);
-  } else if (value === "Enter") {
-  /* Blank line + new line = new paragraph */
+  if (value === "Enter" && isAtBlankLine) {
+    /* Blank line + new line = new paragraph */
     const nexline = document.createElement("SPAN");
     const nexpara = document.createElement("P");
     curnode.textContent = '\xa0'; /* final line of paragraph 
@@ -83,6 +76,14 @@ function charEdit(value) {
     nexline.appendChild(cursor);
     nexpara.appendChild(nexline);
     space.appendChild(nexpara);
+  } else if (value === "Enter") {
+    /* new line w/in cur paragraph */
+    const nexline = document.createElement("SPAN");
+    nexline.appendChild(document.createTextNode(''));
+    curpara.appendChild(document.createElement("BR"));
+    curpara.appendChild(nexline);
+    curline.removeChild(cursor);
+    nexline.appendChild(cursor);
   }
 
   if (value === "Enter") {
