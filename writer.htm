@@ -56,8 +56,8 @@ mcont.addEventListener("blur", (event) => {
 // Initialize with empty text node to avoid a new node for every char typed.
 cursor.parentElement.insertBefore(document.createTextNode(''), cursor);
 
-function getText() {
-  return Array.from(space.childNodes);
+function getText(node) {
+  return Array.from(node.childNodes);
 }
 
 function charEdit(value) {
@@ -70,14 +70,14 @@ function charEdit(value) {
   if (value === "Backspace" && txt.length === 0 &&
       !curnode.previousSibling && curline.previousSibling) {
     curline.removeChild(curnode);
-    Array.from(curline.childNodes).forEach(node => {
+    getText(curline).forEach(node => {
       curline.previousSibling.appendChild(node);
     });
     curpara.removeChild(curline);
   } else if (value === "Backspace" && txt.length === 0 &&
       !curnode.previousSibling && curpara.previousSibling) {
     curline.removeChild(curnode);
-    Array.from(curpara.childNodes).forEach(node => {
+    getText(curpara).forEach(node => {
       curpara.previousSibling.appendChild(node);
     });
     space.removeChild(curpara);
@@ -107,7 +107,7 @@ function charEdit(value) {
 /* If next-to-last line contains only '\n' 
   then make a new paragraph. */
   
-  const lines = Array.from(curpara.childNodes);
+  const lines = getText(curpara);
 
 // CONDITION WORKAROUND at PROBLEM NOW PREVENTS DOUBLE SPACE FOR NEW PARA
   if (lines.length > 1 && lines.at(-2).textContent === '\n') {
