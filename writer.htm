@@ -61,11 +61,33 @@ function getText(node) {
 }
 
 function charEdit(value) {
-// <br> per line failed. back to '\n' but always put it in its own span.
   const curnode = cursor.previousSibling;
-  const txt = curnode.textContent;
   const curline = cursor.parentElement;
   const curpara = curline.parentElement;
+
+  if (value === "Enter" && curnode.textContent.length > 0) {
+  /* new line w/in cur paragraph */
+    const nexline = document.createElement("SPAN");
+    nexline.appendChild(document.createTextNode(''));
+    curpara.appendChild(document.createElement("BR"));
+    curpara.appendChild(nexline);
+    curline.removeChild(cursor);
+    nexline.appendChild(cursor);
+  } else if (value === "Enter") {
+  /* Blank line + new line = new paragraph */
+    const nexline = document.createElement("SPAN");
+    const nexpara = document.createElement("P");
+    curnode.textContent = '\xa0'; /* final line of paragraph 
+      and blank paragraphs become white space */
+    nexline.appendChild(document.createTextNode(''));
+    nexline.appendChild(cursor);
+    nexpara.appendChild(nexline);
+    space.appendChild(nexpara);
+  }
+
+  if (value === "Enter") {
+    return;
+  }
 
   if (value === "Backspace" && txt.length === 0 &&
       !curnode.previousSibling && curline.previousSibling) {
@@ -95,27 +117,6 @@ function charEdit(value) {
   }
 
   curnode.textContent += value;
-
-  if (value === '\n') {
-    const nexline = document.createElement("SPAN");
-    nexline.appendChild(document.createTextNode(''));
-    curpara.appendChild(nexline);
-    curline.removeChild(cursor);
-    nexline.appendChild(cursor);
-  }
-
-/* If next-to-last line contains only '\n' 
-  then make a new paragraph. */
-  
-  const lines = getText(curpara);
-
-// CONDITION WORKAROUND at PROBLEM NOW PREVENTS DOUBLE SPACE FOR NEW PARA
-  if (lines.length > 1 && lines.at(-2).textContent === '\n') {
-    const nexpara = document.createElement("P");
-    curpara.removeChild(curline);
-    nexpara.appendChild(curline);
-    space.appendChild(nexpara);
-  }
 
   return;
 
@@ -219,9 +220,6 @@ function keyfuncs(event) {
   }
   event.preventDefault();
   switch(event.key) {
-    case "Enter":
-      charEdit('\n');
-      break;
     case "ArrowLeft":
     case "ArrowRight":
     case "ArrowUp":
