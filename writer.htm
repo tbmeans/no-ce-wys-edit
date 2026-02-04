@@ -102,8 +102,8 @@ function charEdit(value) {
     nexline.appendChild(cursor);
   }
 
-  if (value === "Backspace" && isAtBlankLine &&
-       // ARE WE GONNA NEED THESE?? !curnode.previousSibling && curline.previousSibling) {
+  if (value === "Backspace" && txt.length === 0 &&
+       !curnode.previousSibling && curline.previousSibling) {
     curline.removeChild(curnode);
     getText(curline).forEach(node => {
       curline.previousSibling.appendChild(node);
