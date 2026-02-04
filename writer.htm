@@ -60,11 +60,27 @@ function getText(node) {
   return Array.from(node.childNodes);
 }
 
+function shiftUp(node) {
+  if (!node.previousSibling) {
+    return;
+  }
+
+  getText(node).forEach(child => {
+    node.previousSibling.appendChild(child);
+  });
+}
+
 function charEdit(value) {
   const curnode = cursor.previousSibling;
+  const nexnode = cursor.nextSibling;
   const curline = cursor.parentElement;
   const curpara = curline.parentElement;
-  const isAtBlankLine = curnode.textContent.length === 0;
+  const isAtBlankLine = curnode.textContent.length === 0 &&
+      nexnode.textContent.length === 0;
+  // const isInBlankPara = line count of para is 1 ?? ;
+ 
+// and when you delete last char to left of cursor, we might need to put an emtpy
+// text node back on, b/c i don't knwo if text node gets deleted or not.
 
   if (value === "Enter" && isAtBlankLine) {
     /* Blank line + new line = new paragraph */
@@ -86,12 +102,8 @@ function charEdit(value) {
     nexline.appendChild(cursor);
   }
 
-  if (value === "Enter") {
-    return;
-  }
-
-  if (value === "Backspace" && txt.length === 0 &&
-      !curnode.previousSibling && curline.previousSibling) {
+  if (value === "Backspace" && isAtBlankLine &&
+       // ARE WE GONNA NEED THESE?? !curnode.previousSibling && curline.previousSibling) {
     curline.removeChild(curnode);
     getText(curline).forEach(node => {
       curline.previousSibling.appendChild(node);
@@ -113,25 +125,11 @@ function charEdit(value) {
     ;
   }
 
-  if (value === "Backspace" || value === "Delete") {
-    return;
+  if (value !== "Enter" && value !== "Backspace" && value !== "Delete") {
+    curnode.textContent += value;
   }
-
-  curnode.textContent += value;
 
   return;
-
-
-// STILL NEED THIS?
-  // Instead of a separate function to call to clear empty nodes,
-  // just clear any empty nodes after edit logic.
-  // AND clear by textContent, not nodeValue, to affect rich text & <br>.
-  if (cursorIsNotFin && nodes[curdx + 1].textContent.length === 0) {
-    space.removeChild(nodes[curdx + 1]);
-  }
-  if (cursorIsNot0th && nodes[curdx - 1].textContent.length === 0) {
-    space.removeChild(nodes[curdx - 1]);
-  }
 }
 
 // but with <br> we don't need this?
