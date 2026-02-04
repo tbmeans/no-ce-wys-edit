@@ -72,15 +72,14 @@ function shiftUp(node) {
 
 function charEdit(value) {
   const curnode = cursor.previousSibling;
+  const curtexlen = curnode.textContent.length;
   const nexnode = cursor.nextSibling;
   const curline = cursor.parentElement;
   const curpara = curline.parentElement;
-  const isAtBlankLine = curnode.textContent.length === 0 &&
-      nexnode.textContent.length === 0;
-  // const isInBlankPara = line count of para is 1 ?? ;
- 
-// and when you delete last char to left of cursor, we might need to put an emtpy
-// text node back on, b/c i don't knwo if text node gets deleted or not.
+  const defobj = { textContent: '' };
+  const safetx = (node) => node ?? defobj;
+  const isAtBlankLine = curtexlen === 0 && 
+      safetx(nexnode).textContent.length === 0;
 
   if (value === "Enter" && isAtBlankLine) {
     /* Blank line + new line = new paragraph */
@@ -102,25 +101,27 @@ function charEdit(value) {
     nexline.appendChild(cursor);
   }
 
-  if (value === "Backspace" && txt.length === 0 &&
+// deleting blank para seems to work w/o refactoring this conditional chain
+// but deleting to go up a line is not working
+  if (value === "Backspace" && curtexlen === 0 &&
        !curnode.previousSibling && curline.previousSibling) {
     curline.removeChild(curnode);
     getText(curline).forEach(node => {
       curline.previousSibling.appendChild(node);
     });
     curpara.removeChild(curline);
-  } else if (value === "Backspace" && txt.length === 0 &&
+  } else if (value === "Backspace" && curtexlen === 0 &&
       !curnode.previousSibling && curpara.previousSibling) {
     curline.removeChild(curnode);
     getText(curpara).forEach(node => {
       curpara.previousSibling.appendChild(node);
     });
     space.removeChild(curpara);
-  } else if (value === "Backspace" && txt.length === 0 &&
+  } else if (value === "Backspace" && curtexlen === 0 &&
       !curnode.previousSibling) {
     ; 
   } else if (value === "Backspace") {
-    curnode.textContent = txt.slice(0, -1);
+    curnode.textContent = curnode.textContent.slice(0, -1);
   } else if (value === "Delete") {
     ;
   }
