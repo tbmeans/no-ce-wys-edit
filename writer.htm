@@ -65,9 +65,17 @@ function shiftUp(node) {
     return;
   }
 
+  const container = node.parentElement;
+
+  if (node.previousSibling.nodeName === "BR") {
+    container.removeChild(node.previousSibling);
+  }
+
   getText(node).forEach(child => {
     node.previousSibling.appendChild(child);
   });
+
+  container.removeChild(node);
 }
 
 function charEdit(value) {
@@ -76,12 +84,13 @@ function charEdit(value) {
   const nexnode = cursor.nextSibling;
   const curline = cursor.parentElement;
   const curpara = curline.parentElement;
-  const defobj = { textContent: '' };
-  const safetx = (node) => node ?? defobj;
-  const isAtBlankLine = curtexlen === 0 && 
+  const isAtLinePos0 = curtexlen === 0;
+  const safetx = (node) => node ?? { textContent: '' };
+  const isOnBlankLine = isAtLinePos0 &&
       safetx(nexnode).textContent.length === 0;
+  const is1stLineOfPara = curline.previousSibling == null;
 
-  if (value === "Enter" && isAtBlankLine) {
+  if (value === "Enter" && isOnBlankLine) {
     /* Blank line + new line = new paragraph */
     const nexline = document.createElement("SPAN");
     const nexpara = document.createElement("P");
@@ -95,34 +104,25 @@ function charEdit(value) {
     /* new line w/in cur paragraph */
     const nexline = document.createElement("SPAN");
     nexline.appendChild(document.createTextNode(''));
+    nexline.appendChild(cursor);
     curpara.appendChild(document.createElement("BR"));
     curpara.appendChild(nexline);
-    curline.removeChild(cursor);
-    nexline.appendChild(cursor);
   }
 
-// deleting blank para seems to work w/o refactoring this conditional chain
-// but deleting to go up a line is not working
-  if (value === "Backspace" && curtexlen === 0 &&
-       !curnode.previousSibling && curline.previousSibling) {
-    curline.removeChild(curnode);
-    getText(curline).forEach(node => {
-      curline.previousSibling.appendChild(node);
-    });
-    curpara.removeChild(curline);
-  } else if (value === "Backspace" && curtexlen === 0 &&
-      !curnode.previousSibling && curpara.previousSibling) {
-    curline.removeChild(curnode);
-    getText(curpara).forEach(node => {
-      curpara.previousSibling.appendChild(node);
-    });
-    space.removeChild(curpara);
-  } else if (value === "Backspace" && curtexlen === 0 &&
-      !curnode.previousSibling) {
-    ; 
+  if (value === "Backspace" && isAtLinePos0 && is1stLineOfPara) {
+    shiftUp(curpara);
+  } else if (value === "Backspace" && isAtLinePos0) {
+    shiftUp(curline);
   } else if (value === "Backspace") {
     curnode.textContent = curnode.textContent.slice(0, -1);
-  } else if (value === "Delete") {
+  }
+
+  // If have shifted up to whitespace headed by &nbsp; then remove it.
+  if (value === "Backspace" && curnode.textContent[0] === '\xa0') {
+    curnode.textContent = curnode.textContent.slice(1); 
+  }
+
+  if (value === "Delete") {
     ;
   }
 
