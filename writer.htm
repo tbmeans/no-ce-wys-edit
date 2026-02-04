@@ -65,17 +65,27 @@ function shiftUp(node) {
     return;
   }
 
-  const container = node.parentElement;
-
   if (node.previousSibling.nodeName === "BR") {
-    container.removeChild(node.previousSibling);
+    node.parentElement.removeChild(node.previousSibling);
   }
+
+  /* Removes empty current text node to append so that final text node of
+   * previous line can become the new current text node to append. */
+  if (node.nodeName === "SPAN") {
+    node.removeChild(node.firstChild);
+  } 
+
+  // Delete terminal &nbsp; whitespace of prev. paragraph.
+  if (node.nodeName === "P") {
+    const prepara = node.previousSibling;
+    prepara.removeChild(prepara.lastChild);
+  } 
 
   getText(node).forEach(child => {
     node.previousSibling.appendChild(child);
   });
 
-  container.removeChild(node);
+  node.parentElement.removeChild(node);
 }
 
 function charEdit(value) {
@@ -117,11 +127,6 @@ function charEdit(value) {
     curnode.textContent = curnode.textContent.slice(0, -1);
   }
 
-  // If have shifted up to whitespace headed by &nbsp; then remove it.
-  if (value === "Backspace" && curnode.textContent[0] === '\xa0') {
-    curnode.textContent = curnode.textContent.slice(1); 
-  }
-
   if (value === "Delete") {
     ;
   }
@@ -129,6 +134,8 @@ function charEdit(value) {
   if (value !== "Enter" && value !== "Backspace" && value !== "Delete") {
     curnode.textContent += value;
   }
+
+  console.log(curnode.textContent)
 
   return;
 }
