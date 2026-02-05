@@ -81,11 +81,37 @@ function shiftUp(node) {
     prepara.removeChild(prepara.lastChild);
   } 
 
+  // And now, the shifting up:
   getText(node).forEach(child => {
     node.previousSibling.appendChild(child);
   });
 
+  // clean up
   node.parentElement.removeChild(node);
+
+  return;
+}
+
+function delahead(node) {
+  if (!node.nextSibling) {
+    return;
+  }
+
+  if (node.nextSibling.nodeName === "BR") {
+    node.parentElement.removeChild(node.nextSibling);
+  }
+
+  if (node.nodeName === "P" && node.lastChild.textContent === '\xa0') {
+    node.removeChild(node.lastChild);
+  }
+
+  getText(node.nextSibling).forEach(child => {
+    node.appendChild(child);
+  });
+  
+  node.parentElement.removeChild(node.nextSibling);
+
+  return;
 }
 
 function charEdit(value) {
@@ -95,10 +121,15 @@ function charEdit(value) {
   const curline = cursor.parentElement;
   const curpara = curline.parentElement;
   const isAtLinePos0 = curtexlen === 0;
-  const safetx = (node) => node ?? { textContent: '' };
-  const isOnBlankLine = isAtLinePos0 &&
-      safetx(nexnode).textContent.length === 0;
+  const isOnBlankLine = isAtLinePos0 && !nexnode;
+  const isDangler = nexnode && nexnode.textContent.length === 0;
+      /* Plan to remove empty nodes right of cursor so that
+       * they need not be considered for "isAtEndOfLine". */
   const is1stLineOfPara = curline.previousSibling == null;
+  const isAtEndOfLine = curline.lastChild === cursor;
+  const isAtEndOfPara = curpara.lastChild === curline ||
+      curpara.lastChild && curpara.lastChild.textContent === '\xa0';
+  const controlkeys = () => "Enter,Backspace,Delete,Tab".split(',');
 
   if (value === "Enter" && isOnBlankLine) {
     /* Blank line + new line = new paragraph */
@@ -127,15 +158,29 @@ function charEdit(value) {
     curnode.textContent = curnode.textContent.slice(0, -1);
   }
 
-  if (value === "Delete") {
-    ;
+  if (value === "Delete" && isAtEndOfLine && isAtEndOfPara) {
+    delahead(curpara);
+  } else if (value === "Delete" && isAtEndOfLine) {
+    delahead(curline);
+  } else if (value === "Delete") {
+    nexnode.textContent = nexnode.textContent.slice(1);
+    isDangler && ( curline.removeChild(nexnode) );
   }
 
-  if (value !== "Enter" && value !== "Backspace" && value !== "Delete") {
+  /* Another potential dangler is backspacing until empty rich/text node and
+   then moving cursor. In that case move the potential dangler along WITH
+   cursor. WAIT NO because what if a text node was emptied and then you move
+   inside a rich text node? In that case, the dangler should be destroyed as it
+   is here when you delete at position 0 in a line. */
+
+  // Tab is 4 spaces
+  if (value === "Tab") {
+    curnode.textContent += '\xa0\xa0\xa0\xa0'
+  }
+
+  if ( controlkeys().every(name => name !== value) ) {
     curnode.textContent += value;
   }
-
-  console.log(curnode.textContent)
 
   return;
 }
@@ -235,7 +280,6 @@ function keyfuncs(event) {
     case "End":
       moveCurs(event.key);
       break;
-    case "Tab":
     case "Shift":
     case "Control":
     case "CapsLock":
