@@ -124,10 +124,12 @@ function charEdit(value) {
   const curline = cursor.parentElement;
   const curlineAll = getText(curline);
   const curpos = curlineAll.indexOf(cursor);
-  const rtOfCur = curlineAll.slice(curpos + 1);
+  const rtOfCur = curlineAll.slice(curpos + 1); // Enter key pushes text fwd.
   const curpara = curline.parentElement;
+  const curparAll = getText(curpara); 
+  const curLineIdx = curparAll.indexOf(curline);
+  const beloCur = curparAll.slice(curLineIdx + 1); // Enter key pushes txt fwd.
   const isAtLinePos0 = curtexlen === 0;
-  const isOnBlankLine = isAtLinePos0 && !nexnode;
   const isDangler = nexnode && nexnode.textContent.length === 0;
       /* Plan to remove empty nodes right of cursor so that
        * they need not be considered for "isAtEndOfLine". */
@@ -137,14 +139,8 @@ function charEdit(value) {
       curpara.lastChild && curpara.lastChild.textContent === '\xa0';
   const controlkeys = () => "Enter,Backspace,Delete,Tab".split(',');
 
-  // now facing the problem of how should new paragraphs be created
-  // when Enter pushes ahead text, because pushed-ahead text can never
-  // be pushed into a new paragraph, and all the white space between
-  // former current line and pushed-ahead text is unreachable & non-editable.
-  // i guess just change the condition "isOnBlankLine" to just nothing @ left.
-
-  if (value === "Enter" && isOnBlankLine) {
-    /* Blank line + new line = new paragraph */
+  if (value === "Enter" && isAtLinePos0) {
+    /* If 1st key entered left of cursor is '\n' then new paragraph. */
     const nexline = document.createElement("SPAN");
     const nexpara = document.createElement("P");
     curnode.textContent = '\xa0'; /* final line of paragraph 
@@ -153,6 +149,7 @@ function charEdit(value) {
     nexline.appendChild(cursor);
     nexline.append(...rtOfCur);
     nexpara.appendChild(nexline);
+    nexpara.append(...beloCur);
     space.appendChild(nexpara);
   } else if (value === "Enter") {
     /* new line w/in cur paragraph */
@@ -210,13 +207,11 @@ function moveCurs(directionKeyName) {
   console.log(`The text node to the left of cursor is ${sibl && (sibl.textContent || sibl.nodeName)}.`);
   console.log(`The line above the current line is ${over && (over.textContent || over.nodeName)}.`);
 
-  // From try out of new code for cursor left, i see that Enter does not push stuff
-  // ahead of it to the next line, so that needs to be fixed. Enter should function
-  // like push-ahead, the opposite of Delete key. 
+  // need condition to handle going up to previous paragraph with arrowleft
 
   if (dname === 'Left' && sibl.textContent.length === 0 && !over) {
     return;
-  } else if (dname === 'Left' && !sibl) {
+  } else if (dname === 'Left' && sibl.textContent.length === 0) {
     const up2 = over.previousSibling;
     over.textContent !== '\xa0' || over.nodeName !== 'BR' &&
         ( over.appendChild(cursor) );
