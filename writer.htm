@@ -41,6 +41,8 @@
   </div>
 <script>
 
+'use strict'
+
 const mcont = document.getElementById("main-container");
 const space = document.getElementById("write-space");
 const cursor = document.getElementById("cursor");
@@ -101,6 +103,7 @@ function delahead(node) {
     node.parentElement.removeChild(node.nextSibling);
   }
 
+  // is this not kicking in?
   if (node.nodeName === "P" && node.lastChild.textContent === '\xa0') {
     node.removeChild(node.lastChild);
   }
@@ -175,7 +178,7 @@ function charEdit(value) {
 
   // Tab is 4 spaces
   if (value === "Tab") {
-    curnode.textContent += '\xa0\xa0\xa0\xa0'
+    curnode.textContent += '\xa0\xa0\xa0\xa0';
   }
 
   if ( controlkeys().every(name => name !== value) ) {
@@ -185,84 +188,38 @@ function charEdit(value) {
   return;
 }
 
-// but with <br> we don't need this?
-// THIS NEEDED TO INCLUDE THE NEWLINES AS GETTABLE CHARS RATHER THAN SPLIT THEM AWAY
-function getChar(textNodeValue, isToTheLeft) {
-  return textNodeValue.at(isToTheLeft && -1 || 0);
-}
 
 function moveCurs(directionKeyName) {
   const dname = directionKeyName.replace("Arrow", '');
-  const [ precurs, postcur ] = getText();
+  const sibl = cursor.previousSibling;
+  const sibr = cursor.nextSibling;
+  const over = cursor.parentElement.previousSibling;
+  const undr = cursor.parentElement.nextSibling;
 
-  if (precurs && dname === "Left") {
-    const char = getChar(precurs.nodeValue, true);
-    charEdit(-1);
-    if (postcur) {
-      postcur.nodeValue = char + postcur.nodeValue;
-    } else {
-      space.appendChild(document.createTextNode(char));
-    }
+  console.log(`The text node to the left of cursor is ${sibl && (sibl.textContent || sibl.nodeName)}.`);
+  console.log(`The line above the current line is ${over && (over.textContent || over.nodeName)}.`);
+
+  // From try out of new code for cursor left, i see that Enter does not push stuff
+  // ahead of it to the next line, so that needs to be fixed. Enter should function
+  // like push-ahead, the opposite of Delete key. 
+
+  if (dname === 'Left' && sibl.textContent.length === 0 && !over) {
     return;
-  }
-
-  if (postcur && dname === "Right") {
-    const char = getChar(postcur.nodeValue, false);
-    charEdit(+1);
-    charEdit(char);
-    return;
-  }
-
-  // The logic of up and down comes down to shifting characters to
-  // opposite side of cursor, dependent especially on the characters
-  // from the cursor to the beginning of the line on which the cursor
-  // is currently located. 
-
-  const fin = precurs ? precurs.nodeValue.lastIndexOf('\n') + 1 : 0;
-  const len = precurs ? precurs.nodeValue.slice(fin).length : 0;
-
-  // If no precursor, consider both Left and Up directions.
-  if (fin === 0 && (dname === "Up" || dname === "Left")) {
-    return;
-  }
-
-  // still have problem of up becoming just left when whitespace
-  // separates lines
-  if (dname === "Up") {
-    const pen = precurs.nodeValue.slice(0, fin - 1).lastIndexOf('\n') + 1;
-    const cutpre = precurs.nodeValue.slice(pen + len);
-    precurs.nodeValue = precurs.nodeValue.slice(0, pen + len);
-    if (precurs.nodeValue.length === 0) {
-      space.removeChild(precurs);
-    }
-    if (postcur) {
-      postcur.nodeValue = cutpre + postcur.nodeValue;
-    } else {
-      space.appendChild(document.createTextNode(cutpre));
-    }
-    return;
-  }
-
-  // Only case remaining is direction down.
-  // Actually Right with no postcursor also comes here.
-
-  const ini = postcur ? postcur.nodeValue.indexOf('\n') + 1 : 0;
-
-  if (ini === 0) { // This also serves Right w/o postcursor case.
-    return;
-  }
-
-  const cutpos = postcur.nodeValue.slice(0, ini + len);
-  postcur.nodeValue = postcur.nodeValue.slice(ini + len);
-
-  if (postcur.nodeValue.length === 0) {
-    space.removeChild(postcur);
-  }
-
-  if (precurs) {
-    precurs.nodeValue += cutpos;
-  } else {
-    space.insertBefore(document.createTextNode(cutpos), cursor);
+  } else if (dname === 'Left' && !sibl) {
+    const up2 = over.previousSibling;
+    over.textContent !== '\xa0' || over.nodeName !== 'BR' &&
+        ( over.appendChild(cursor) );
+    over.textContent === '\xa0' || over.nodeName === 'BR' && up2 &&
+        ( up2.appendChild(cursor) );
+  } else if (dname === "Left") {
+    const char1 = sibl.textContent.at(-1);
+    const ltype = sibl.nodeName;
+    const nexsb = ltype === '#text' && (document.createTextNode('')) ||
+        document.createElement(ltype);
+    nexsb.textContent = char1;
+    sibl.textContent = sibl.textContent.slice(0, -1);
+    sibr != null && ( sibr.textContent = char1 + sibr.textContent ) || (
+        cursor.parentElement.appendChild(nexsb) );
   }
 }
 
