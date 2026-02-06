@@ -120,8 +120,11 @@ function delahead(node) {
 function charEdit(value) {
   const curnode = cursor.previousSibling;
   const curtexlen = curnode.textContent.length;
-  const nexnode = cursor.nextSibling;
+  const nexnode = cursor.nextSibling; 
   const curline = cursor.parentElement;
+  const curlineAll = getText(curline);
+  const curpos = curlineAll.indexOf(cursor);
+  const rtOfCur = curlineAll.slice(curpos + 1);
   const curpara = curline.parentElement;
   const isAtLinePos0 = curtexlen === 0;
   const isOnBlankLine = isAtLinePos0 && !nexnode;
@@ -134,6 +137,12 @@ function charEdit(value) {
       curpara.lastChild && curpara.lastChild.textContent === '\xa0';
   const controlkeys = () => "Enter,Backspace,Delete,Tab".split(',');
 
+  // now facing the problem of how should new paragraphs be created
+  // when Enter pushes ahead text, because pushed-ahead text can never
+  // be pushed into a new paragraph, and all the white space between
+  // former current line and pushed-ahead text is unreachable & non-editable.
+  // i guess just change the condition "isOnBlankLine" to just nothing @ left.
+
   if (value === "Enter" && isOnBlankLine) {
     /* Blank line + new line = new paragraph */
     const nexline = document.createElement("SPAN");
@@ -142,6 +151,7 @@ function charEdit(value) {
       and blank paragraphs become white space */
     nexline.appendChild(document.createTextNode(''));
     nexline.appendChild(cursor);
+    nexline.append(...rtOfCur);
     nexpara.appendChild(nexline);
     space.appendChild(nexpara);
   } else if (value === "Enter") {
@@ -149,6 +159,7 @@ function charEdit(value) {
     const nexline = document.createElement("SPAN");
     nexline.appendChild(document.createTextNode(''));
     nexline.appendChild(cursor);
+    nexline.append(...rtOfCur);
     curpara.appendChild(document.createElement("BR"));
     curpara.appendChild(nexline);
   }
