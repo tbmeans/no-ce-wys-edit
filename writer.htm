@@ -71,8 +71,8 @@ function shiftUp(node) {
     node.parentElement.removeChild(node.previousSibling);
   }
 
-  /* Removes empty current text node to append so that final text node of
-   * previous line can become the new current text node to append. */
+  /* Removes empty current text node so that final text node of
+   * previous line can become the new current text node to write in. */
   if (node.nodeName === "SPAN") {
     node.removeChild(node.firstChild);
   } 
@@ -143,6 +143,8 @@ function charEdit(value) {
     /* If 1st key entered left of cursor is '\n' then new paragraph. */
     const nexline = document.createElement("SPAN");
     const nexpara = document.createElement("P");
+    const dangle1 = document.createElement("SPAN");
+    const dangle2 = document.createElement("BR");
     curnode.textContent = '\xa0'; /* final line of paragraph 
       and blank paragraphs become white space */
     nexline.appendChild(document.createTextNode(''));
@@ -151,6 +153,10 @@ function charEdit(value) {
     nexpara.appendChild(nexline);
     nexpara.append(...beloCur);
     space.appendChild(nexpara);
+    Array.from(curpara.childNodes).length === 1 && (
+        curpara.insertBefore(dangle1, curpara.lastChild) );
+    Array.from(curpara.childNodes).length === 2 && (
+        curpara.insertBefore(dangle2, curpara.lastChild) );
   } else if (value === "Enter") {
     /* new line w/in cur paragraph */
     const nexline = document.createElement("SPAN");
@@ -196,37 +202,71 @@ function charEdit(value) {
   return;
 }
 
+function leftHandler() {
+  const leftOfCursOnLine = cursor.previousSibling;
+  const rightOfCurOnLine = cursor.nextSibling;
+  const curline = cursor.parentElement;
+  const lineAboveCur = curline?.previousSibling?.previousSibling; // skip <BR>
+  const paraAboveCur = curline?.parentElement?.previousSibling;
+  const isAtLinePos0 = !leftOfCursOnLine || 
+      leftOfCursOnLine.textContent.length === 0;
+
+  if (isAtLinePos0 && !lineAboveCur && !paraAboveCur) {
+    return;
+  } else if (isAtLinePos0 && !lineAboveCur) {
+    paraAboveCur.lastChild.previousSibling.previousSibling.appendChild(cursor);
+  } else if (isAtLinePos0) {
+    lineAboveCur.appendChild(cursor);
+  }
+
+  if (isAtLinePos0) {
+    return;
+  }
+  // else shift char from left to right across cursor on same line:
+
+  const char1 = leftOfCursOnLine.textContent.at(-1);
+  const ltype = leftOfCursOnLine.nodeName;
+  const rtype = rightOfCurOnLine?.nodeName;
+  const nexsb = ltype === '#text' && (document.createTextNode('')) ||
+      document.createElement(ltype);
+
+  nexsb.textContent = char1;
+  leftOfCursOnLine.textContent = leftOfCursOnLine.textContent.slice(0, -1);
+
+  if (rtype != null && ltype === rtype) {
+    rightOfCurOnLine.textContent = char1 + rightOfCurOnLine.textContent;
+  } else if (rtype != null) {
+    cursor.parentElement.insertBefore(nexsb, rightOfCurOnLine);
+  } else {
+    cursor.parentElement.appendChild(nexsb);
+  }
+
+  return;
+}
+
+function rightHandler() {
+  const leftOfCursOnLine = cursor.previousSibling;
+  const rightOfCurOnLine = cursor.nextSibling;
+  const lineBelowCur = cursor.parentElement.nextSibling;
+  const paraBelowCur = cursor.parentElement.parentElement.nextSibling;
+}
+
+function upHandler() {
+  const lineAboveCur = cursor.parentElement.previousSibling;
+  const paraAboveCur = cursor.parentElement.parentElement.previousSibling;
+}
+
+function downHandler() {
+  const lineBelowCur = cursor.parentElement.nextSibling;
+  const paraBelowCur = cursor.parentElement.parentElement.nextSibling;
+}
 
 function moveCurs(directionKeyName) {
   const dname = directionKeyName.replace("Arrow", '');
-  const sibl = cursor.previousSibling;
-  const sibr = cursor.nextSibling;
-  const over = cursor.parentElement.previousSibling;
-  const undr = cursor.parentElement.nextSibling;
+  const index = "Left,Right,Up,Down".split(',').indexOf(dname);
 
-  console.log(`The text node to the left of cursor is ${sibl && (sibl.textContent || sibl.nodeName)}.`);
-  console.log(`The line above the current line is ${over && (over.textContent || over.nodeName)}.`);
-
-  // need condition to handle going up to previous paragraph with arrowleft
-
-  if (dname === 'Left' && sibl.textContent.length === 0 && !over) {
-    return;
-  } else if (dname === 'Left' && sibl.textContent.length === 0) {
-    const up2 = over.previousSibling;
-    over.textContent !== '\xa0' || over.nodeName !== 'BR' &&
-        ( over.appendChild(cursor) );
-    over.textContent === '\xa0' || over.nodeName === 'BR' && up2 &&
-        ( up2.appendChild(cursor) );
-  } else if (dname === "Left") {
-    const char1 = sibl.textContent.at(-1);
-    const ltype = sibl.nodeName;
-    const nexsb = ltype === '#text' && (document.createTextNode('')) ||
-        document.createElement(ltype);
-    nexsb.textContent = char1;
-    sibl.textContent = sibl.textContent.slice(0, -1);
-    sibr != null && ( sibr.textContent = char1 + sibr.textContent ) || (
-        cursor.parentElement.appendChild(nexsb) );
-  }
+  [ leftHandler, rightHandler, upHandler, downHandler ][index]();
+  return;
 }
 
 function keyfuncs(event) {
