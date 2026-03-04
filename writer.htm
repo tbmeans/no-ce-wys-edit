@@ -212,6 +212,14 @@ function leftHandler() {
       leftOfCursOnLine.textContent.length === 0;
 
   if (isAtLinePos0 && !lineAboveCur && !paraAboveCur) {
+    console.log("we are having a back and forth from end of one line to beginning of next line problem")
+    /* solution: when left cursor has moved to left end of text node, CODE SHOULD ENSURE 
+    that an empty text node remains still to left of cursor. this might alreayd be happening, but what may still be lacking is to LEAVE that empty node there when cursor goes up to prev line, leave it there as a place to come back down to, but cursor going always to right of empty node never left of empty node. how we judge need for transition up to above line must always be based on when the node left of cursor is empty. but we never have an empty node right of cursor. in case of going down a line with right arrow, cursor really is lastchild of line. now for the utmost edge case at top and bottom of text
+    yeah still an empty node is leftmost, and curline is first child of first para,
+    and for bottom curline is last child of last para. Well that is what these conditions
+    seem to be, so the problem is that boundary from one line to next is getting treated
+    like this edge case. hopeful that proper leaving behind empty node to lead a line
+    will keep the 2 lines boundary problem from becoming an edge case? */
     return;
   } else if (isAtLinePos0 && !lineAboveCur) {
     paraAboveCur.lastChild.previousSibling.previousSibling.appendChild(cursor);
@@ -247,8 +255,51 @@ function leftHandler() {
 function rightHandler() {
   const leftOfCursOnLine = cursor.previousSibling;
   const rightOfCurOnLine = cursor.nextSibling;
-  const lineBelowCur = cursor.parentElement.nextSibling;
-  const paraBelowCur = cursor.parentElement.parentElement.nextSibling;
+  const curline = cursor.parentElement;
+  const isAtEndOfLine = curline.lastChild === cursor ||
+      (rightOfCurOnLine.textContent ?? '').length === 0;
+  const nexline = curline.nextSibling?.nextSibling; // skip <BR>
+  const isNoBreakBelow = nexline == null;
+  const isAtEndOfNonFinalPara = nexline?.nodeName === "BR" &&
+      nexline.nextSibling.textContent === '\xa0';  
+
+  if (isAtEndOfLine && isNoBreakBelow) {
+    console.log("we are having a back and forth from end of one line to beginning of next line problem")
+    return;
+  } else if (isAtEndOfLine && isAtEndOfNonFinalPara) {
+    const nexpara = curline.parentElement.nextSibling;
+    const nex1stline = nexpara.firstChild;
+    const nex1stnode = nex1stline.firstChild;
+    nex1stnode && ( nex1stline.insertBefore(cursor, nex1stnode) ) || (
+        nex1stline.appendChild(cursor) );
+    nex1stline.insertBefore(document.createTextNode(''), cursor);
+  } else if (isAtEndOfLine) {
+    const nex1stnode = nexline.firstChild;
+    nex1stnode && ( nexline.insertBefore(cursor, nex1stnode) ) || (
+        nexline.appendChild(cursor) );
+    nexline.insertBefore(document.createTextNode(''), cursor);
+  }
+
+  if (isAtEndOfLine) {
+    return;
+  } // else shift char from right to left across cursor on same line:
+
+  const char1 = rightOfCurOnLine.textContent[0];
+  const ltype = leftOfCursOnLine.nodeName;
+  const rtype = rightOfCurOnLine.nodeName;
+  const presb = rtype === '#text' && (document.createTextNode('')) ||
+      document.createElement(rtype);
+
+  presb.textContent = char1;
+  rightOfCurOnLine.textContent = rightOfCurOnLine.textContent.slice(1);
+
+  if (ltype === rtype) {
+    leftOfCursOnLine.textContent += char1;
+  } else {
+    curline.insertBefore(presb, cursor);
+  }
+
+  return;
 }
 
 function upHandler() {
