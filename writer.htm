@@ -118,86 +118,12 @@ function delahead(node) {
 }
 
 function charEdit(value) {
-  const curnode = cursor.previousSibling;
-  const curtexlen = curnode.textContent.length;
-  const nexnode = cursor.nextSibling; 
-  const curline = cursor.parentElement;
-  const curlineAll = getText(curline);
-  const curpos = curlineAll.indexOf(cursor);
-  const rtOfCur = curlineAll.slice(curpos + 1); // Enter key pushes text fwd.
-  const curpara = curline.parentElement;
-  const curparAll = getText(curpara); 
-  const curLineIdx = curparAll.indexOf(curline);
-  const beloCur = curparAll.slice(curLineIdx + 1); // Enter key pushes txt fwd.
-  const isAtLinePos0 = curtexlen === 0;
-  const isDangler = nexnode && nexnode.textContent.length === 0;
-      /* Plan to remove empty nodes right of cursor so that
-       * they need not be considered for "isAtEndOfLine". */
-  const is1stLineOfPara = curline.previousSibling == null;
-  const isAtEndOfLine = curline.lastChild === cursor;
-  const isAtEndOfPara = curpara.lastChild === curline ||
-      curpara.lastChild && curpara.lastChild.textContent === '\xa0';
-  const controlkeys = () => "Enter,Backspace,Delete,Tab".split(',');
-
-  if (value === "Enter" && isAtLinePos0) {
-    /* If 1st key entered left of cursor is '\n' then new paragraph. */
-    const nexline = document.createElement("SPAN");
-    const nexpara = document.createElement("P");
-    const dangle1 = document.createElement("SPAN");
-    const dangle2 = document.createElement("BR");
-    curnode.textContent = '\xa0'; /* final line of paragraph 
-      and blank paragraphs become white space */
-    nexline.appendChild(document.createTextNode(''));
-    nexline.appendChild(cursor);
-    nexline.append(...rtOfCur);
-    nexpara.appendChild(nexline);
-    nexpara.append(...beloCur);
-    space.appendChild(nexpara);
-    Array.from(curpara.childNodes).length === 1 && (
-        curpara.insertBefore(dangle1, curpara.lastChild) );
-    Array.from(curpara.childNodes).length === 2 && (
-        curpara.insertBefore(dangle2, curpara.lastChild) );
-  } else if (value === "Enter") {
-    /* new line w/in cur paragraph */
-    const nexline = document.createElement("SPAN");
-    nexline.appendChild(document.createTextNode(''));
-    nexline.appendChild(cursor);
-    nexline.append(...rtOfCur);
-    curpara.appendChild(document.createElement("BR"));
-    curpara.appendChild(nexline);
+  if (value.length > 1) {
+    // then it's a control key.
+    return;
   }
 
-  if (value === "Backspace" && isAtLinePos0 && is1stLineOfPara) {
-    shiftUp(curpara);
-  } else if (value === "Backspace" && isAtLinePos0) {
-    shiftUp(curline);
-  } else if (value === "Backspace") {
-    curnode.textContent = curnode.textContent.slice(0, -1);
-  }
-
-  if (value === "Delete" && isAtEndOfLine && isAtEndOfPara) {
-    delahead(curpara);
-  } else if (value === "Delete" && isAtEndOfLine) {
-    delahead(curline);
-  } else if (value === "Delete") {
-    nexnode.textContent = nexnode.textContent.slice(1);
-    isDangler && ( curline.removeChild(nexnode) );
-  }
-
-  /* Another potential dangler is backspacing until empty rich/text node and
-   then moving cursor. In that case move the potential dangler along WITH
-   cursor. WAIT NO because what if a text node was emptied and then you move
-   inside a rich text node? In that case, the dangler should be destroyed as it
-   is here when you delete at position 0 in a line. */
-
-  // Tab is 4 spaces
-  if (value === "Tab") {
-    curnode.textContent += '\xa0\xa0\xa0\xa0';
-  }
-
-  if ( controlkeys().every(name => name !== value) ) {
-    curnode.textContent += value;
-  }
+  cursor.previousSibling.textContent += value;
 
   return;
 }
