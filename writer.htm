@@ -43,88 +43,106 @@
 
 'use strict'
 
-const mcont = document.getElementById("main-container");
+const mainbox = document.getElementById("main-container");
 const space = document.getElementById("write-space");
 const cursor = document.getElementById("cursor");
 
-mcont.addEventListener("focus", (event) => {
-  mcont.addEventListener("keydown", keyfuncs);
+mainbox.addEventListener("focus", (event) => {
+  mainbox.addEventListener("keydown", keyfuncs);
 });
 
-mcont.addEventListener("blur", (event) => {
-  mcont.removeEventListener("keydown", keyfuncs);
+mainbox.addEventListener("blur", (event) => {
+  mainbox.removeEventListener("keydown", keyfuncs);
 });
 
 // Initialize with empty text node to avoid a new node for every char typed.
 cursor.parentElement.insertBefore(document.createTextNode(''), cursor);
 
-function getText(node) {
-  return Array.from(node.childNodes);
-}
+function enterHandler() {
+  // This cursor parent is the current line before pressing "Enter".
+  const nodes = Array.from(cursor.parentElement.childNodes);
+  const index = nodes.indexOf(cursor);
+  const ahead = nodes.slice(index + 1);
+  const nuevo = document.createElement("SPAN");
+  const nova0 = document.createTextNode('');
 
-function shiftUp(node) {
-  if (!node.previousSibling) {
-    return;
-  }
+  /*  Clear dangling empty text nodes that'd be left behind by the cursor when
+      it moves to a new line. Empty text nodes are to exist only to the left of
+      the cursor when the cursor is at position 0 of a string, to provide a
+      text entry area at/behind the cursor. Now when the cursor goes to a new
+      line then it is at position 0 and it needs an empty node to its left,
+      which is why variable "nova0" was declared. */
+  nodes[0]?.nodeName === "#text" && !nodes[0].textContent.length &&
+      cursor.parentElement.removeChild(nodes[0]);
 
-  if (node.previousSibling.nodeName === "BR") {
-    node.parentElement.removeChild(node.previousSibling);
-  }
-
-  /* Removes empty current text node so that final text node of
-   * previous line can become the new current text node to write in. */
-  if (node.nodeName === "SPAN") {
-    node.removeChild(node.firstChild);
-  } 
-
-  // Delete terminal &nbsp; whitespace of prev. paragraph.
-  if (node.nodeName === "P") {
-    const prepara = node.previousSibling;
-    prepara.removeChild(prepara.lastChild);
-  } 
-
-  // And now, the shifting up:
-  getText(node).forEach(child => {
-    node.previousSibling.appendChild(child);
-  });
-
-  // clean up
-  node.parentElement.removeChild(node);
-
-  return;
-}
-
-function delahead(node) {
-  if (!node.nextSibling) {
-    return;
-  }
-
-  if (node.nextSibling.nodeName === "BR") {
-    node.parentElement.removeChild(node.nextSibling);
-  }
-
-  // is this not kicking in?
-  if (node.nodeName === "P" && node.lastChild.textContent === '\xa0') {
-    node.removeChild(node.lastChild);
-  }
-
-  getText(node.nextSibling).forEach(child => {
-    node.appendChild(child);
-  });
+  // This cursor parent is still the current line before pressing "Enter".
+  cursor.parentElement.after(document.createElement("BR"), nuevo);
+  nuevo.append(nova0, cursor);
+  ahead.length && nuevo.append(...ahead);
   
-  node.parentElement.removeChild(node.nextSibling);
+  /*  This cursor parent is the new line formed by key "Enter".
+      Must go up 2x element siblings because <BR> is between each text line
+      by design. */
+  const preln = cursor.parentElement.previousSibling?.previousSibling;
+  const pre2l = preln?.previousSibling?.previousSibling;
+  const isNewParagraphBreak = !cursor.previousSibling.textContent.length &&
+          preln && !preln.textContent.length && 
+              pre2l && !pre2l.textContent.length;
+
+  // Any whitespace greater than double-spacing creates a new paragraph.
+  if (isNewParagraphBreak) {
+    const nextp = document.createElement("P");
+
+    nextp.appendChild(cursor.parentElement);
+    space.appendChild(nextp);
+  }
 
   return;
 }
 
-function charEdit(value) {
-  if (value.length > 1) {
-    // then it's a control key.
+function backspaceHandler() {
+  const curnode = cursor.previousSibling;
+  const curline = cursor.parentElement;
+  const curpara = cursor.parentElement.parentElement;
+
+  // Erasing previous keyed char
+  if (curnode.textContent.length > 0) {
+    curnode.textContent = curnode.textContent.slice(0, -1);
     return;
   }
 
-  cursor.previousSibling.textContent += value;
+  /* Else, erasing newline control char */
 
+  // curnode is empty, so shift up if line above
+  if (curline.previousSibling?.previousSibling) {
+    const preline = curline.previousSibling.previousSibling;
+    const goingup = preline.textContent.length && 
+        Array.from(curline.childNodes).slice(1) ||
+            Array.from(curline.childNodes);
+    /*  Empty curnode should not tag along unless prev line is empty.
+        see longest comment in the above enterHandler for rationale.
+      */
+
+    preline.append(...goingup);
+    curpara.removeChild(curline.previousSibling); // <BR>
+    curpara.removeChild(curline); 
+    
+    return;
+  }
+
+  // cur node empty & cur line 1st in cur para so merge cur & pre para if pre.
+  if (curpara.previousSibling) {
+    const prepa = curpara.previousSibling;
+
+    prepa.removeChild(prepa.lastChild); // <BR>
+    prepa.removeChild(prepa.lastChild); // term. blank line <SPAN>
+    prepa.append(...Array.from(curpara.childNodes));
+    /*  Sent up leading blank text node and all b/c replacing last blank/line
+        of previous para. */
+    space.removeChild(curpara);
+  }
+
+  // remaining, curnode empty, no paragraph above current
   return;
 }
 
@@ -138,14 +156,7 @@ function leftHandler() {
       leftOfCursOnLine.textContent.length === 0;
 
   if (isAtLinePos0 && !lineAboveCur && !paraAboveCur) {
-    console.log("we are having a back and forth from end of one line to beginning of next line problem")
-    /* solution: when left cursor has moved to left end of text node, CODE SHOULD ENSURE 
-    that an empty text node remains still to left of cursor. this might alreayd be happening, but what may still be lacking is to LEAVE that empty node there when cursor goes up to prev line, leave it there as a place to come back down to, but cursor going always to right of empty node never left of empty node. how we judge need for transition up to above line must always be based on when the node left of cursor is empty. but we never have an empty node right of cursor. in case of going down a line with right arrow, cursor really is lastchild of line. now for the utmost edge case at top and bottom of text
-    yeah still an empty node is leftmost, and curline is first child of first para,
-    and for bottom curline is last child of last para. Well that is what these conditions
-    seem to be, so the problem is that boundary from one line to next is getting treated
-    like this edge case. hopeful that proper leaving behind empty node to lead a line
-    will keep the 2 lines boundary problem from becoming an edge case? */
+    console.log("we are having a problem with moving back to the left after moving right across line boundary")
     return;
   } else if (isAtLinePos0 && !lineAboveCur) {
     paraAboveCur.lastChild.previousSibling.previousSibling.appendChild(cursor);
@@ -190,7 +201,7 @@ function rightHandler() {
       nexline.nextSibling.textContent === '\xa0';  
 
   if (isAtEndOfLine && isNoBreakBelow) {
-    console.log("we are having a back and forth from end of one line to beginning of next line problem")
+    console.log("we are having a problem with moving back to the right after moving left across line boundary")
     return;
   } else if (isAtEndOfLine && isAtEndOfNonFinalPara) {
     const nexpara = curline.parentElement.nextSibling;
@@ -238,27 +249,38 @@ function downHandler() {
   const paraBelowCur = cursor.parentElement.parentElement.nextSibling;
 }
 
-function moveCurs(directionKeyName) {
-  const dname = directionKeyName.replace("Arrow", '');
-  const index = "Left,Right,Up,Down".split(',').indexOf(dname);
-
-  [ leftHandler, rightHandler, upHandler, downHandler ][index]();
-  return;
-}
-
 function keyfuncs(event) {
   if (event.key === "PageUp" || event.key === "PageDown") {
     return;
   }
   event.preventDefault();
   switch(event.key) {
+    case "Enter":
+      enterHandler();
+      break;
+    case "Backspace":
+      backspaceHandler();
+      break;
+    case "Delete":
+      deleteHandler();
+      break;
     case "ArrowLeft":
+      leftHandler();
+      break;
     case "ArrowRight":
+      rightHandler();
+      break;
     case "ArrowUp":
+      upHandler();
+      break;
     case "ArrowDown":
+      downHandler();
+      break;
     case "Home":
+      leftHandler("all the way");
+      break;
     case "End":
-      moveCurs(event.key);
+      rightHandler("all the way");
       break;
     case "Shift":
     case "Control":
@@ -266,8 +288,11 @@ function keyfuncs(event) {
     case "NumLock":
     case "Insert":
       break;
+    case "Tab":
+      cursor.previousSibling.textContent += '\xa0\xa0\xa0\xa0';
+      break;
     default:
-      charEdit(event.key);
+      cursor.previousSibling.textContent += event.key;
   }
 }
 
