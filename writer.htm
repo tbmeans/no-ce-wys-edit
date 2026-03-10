@@ -108,9 +108,12 @@ function backspaceHandler() {
   if (curnode.textContent.length > 0) {
     // Erasing previous keyed char
     curnode.textContent = curnode.textContent.slice(0, -1);
-  /* Else, curnode is empty and we're erasing newline control char */
+  /* 
+      Else, curnode is empty and we're erasing newline control char
+    */
   } else if (curline.previousSibling?.previousSibling) {
-    // curnode is empty, so shift up if line above
+    /* curnode is empty, so shift up if line above
+     */
     const preline = curline.previousSibling.previousSibling;
     const goingup = preline.textContent.length && 
         Array.from(curline.childNodes).slice(1) ||
@@ -121,8 +124,12 @@ function backspaceHandler() {
     preline.append(...goingup);
     curpara.removeChild(curline.previousSibling); // <BR>
     curpara.removeChild(curline); 
+    /*
+     */
   } else if (curpara.previousSibling) {
-    // cur node empty & cur line 1st in cur para so merge cur & pre para if pre.
+    /*  cur node empty & cur line 1st in cur para
+        so merge cur & pre para if pre.
+      */
     const prepa = curpara.previousSibling;
 
     prepa.removeChild(prepa.lastChild); // <BR>
@@ -134,6 +141,55 @@ function backspaceHandler() {
   }
 
   // remaining, curnode empty, no paragraph above current
+  return;
+}
+
+function deleteHandler() {
+  const nexnode = cursor.nextSibling;
+  const curline = cursor.parentElement;
+  const curpara = cursor.parentElement.parentElement;
+
+  if (nexnode && nexnode.textContent.length > 0) {
+    // Erasing keyed char ahead
+    nexnode.textContent = nexnode.textContent.slice(1);
+  /* 
+      Else empty or nothing ahead and we're bringing up next line or paragraph.
+   */
+  } else if (curline.nextSibling?.nextSibling) {
+    /* Bring up the next line to end of current line.
+     */
+    const nexline = curline.nextSibling.nextSibling;
+    const dangler = curline.lastChild;
+    /*  We've worked it out elsewhere that there are no dangling empty nodes
+        at the head of non-current lines, but we might have a dangler at the
+        end of current line if we've been deleting text prior. */
+    dangler !== cursor && curline.removeChild(dangler);
+    nexline.textContent.length &&
+        curline.append(...Array.from(nexline.childNodes));
+    curpara.removeChild(curline.nextSibling); // <BR>
+    curpara.removeChild(nexline); 
+    /*
+     */
+  } else if (curpara.nextSibling) {
+    /*  There's no next line below in current paragraph, so bring up entire
+        next paragraph below and merge, taking 1st line of next paragraph and
+        making it the line following current line of current paragraph. 
+      */
+    const nexpara = curpara.nextSibling;
+    const dangler = curline.lastChild;
+    /*  We've worked it out elsewhere that there are no dangling empty nodes
+        at the head of non-current lines, but we might have a dangler at the
+        end of current line if we've been deleting text prior.
+      */
+    dangler !== cursor && curline.removeChild(dangler);
+    curpara.removeChild(curpara.lastChild); // <BR>
+    curpara.removeChild(curpara.lastChild); // term. blank line <SPAN>
+    curpara.append(...Array.from(nexpara.childNodes));
+    space.removeChild(nexpara);
+  }
+  /* Remaining condition: no text rt. of cursor & cur line is last line of doc.
+     So do nothing.
+   */
   return;
 }
 
