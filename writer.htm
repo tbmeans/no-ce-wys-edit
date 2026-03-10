@@ -105,16 +105,12 @@ function backspaceHandler() {
   const curline = cursor.parentElement;
   const curpara = cursor.parentElement.parentElement;
 
-  // Erasing previous keyed char
   if (curnode.textContent.length > 0) {
+    // Erasing previous keyed char
     curnode.textContent = curnode.textContent.slice(0, -1);
-    return;
-  }
-
-  /* Else, erasing newline control char */
-
-  // curnode is empty, so shift up if line above
-  if (curline.previousSibling?.previousSibling) {
+  /* Else, curnode is empty and we're erasing newline control char */
+  } else if (curline.previousSibling?.previousSibling) {
+    // curnode is empty, so shift up if line above
     const preline = curline.previousSibling.previousSibling;
     const goingup = preline.textContent.length && 
         Array.from(curline.childNodes).slice(1) ||
@@ -122,16 +118,11 @@ function backspaceHandler() {
     /*  Empty curnode should not tag along unless prev line is empty.
         see longest comment in the above enterHandler for rationale.
       */
-
     preline.append(...goingup);
     curpara.removeChild(curline.previousSibling); // <BR>
     curpara.removeChild(curline); 
-    
-    return;
-  }
-
-  // cur node empty & cur line 1st in cur para so merge cur & pre para if pre.
-  if (curpara.previousSibling) {
+  } else if (curpara.previousSibling) {
+    // cur node empty & cur line 1st in cur para so merge cur & pre para if pre.
     const prepa = curpara.previousSibling;
 
     prepa.removeChild(prepa.lastChild); // <BR>
