@@ -262,6 +262,10 @@ function rightHandler() {
     rightOfCur.textContent = rtext.slice(1);
     leftOfCurs.textContent += char1;
 
+    // remove dangler that might've been created such as w/ ab|c -> abc|
+    cursor.nextSibling && cursor.nextSibling.textContent.length === 0 &&
+        curline.removeChild(cursor.nextSibling);
+
   } else if (rtext && rtext.length) {
     const presb = rtype === '#text' && document.createTextNode('') ||
         document.createElement(rtype);
