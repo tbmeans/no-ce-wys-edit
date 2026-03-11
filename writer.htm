@@ -364,6 +364,10 @@ function keyfuncs(event) {
     default:
       cursor.previousSibling.textContent += event.key;
   }
+
+  if (cursor.nextSibling && cursor.nextSibling.textContent.length === 0) {
+    console.log("YOU LEFT A DANGLER!");
+  }
 }
 
 </script>
