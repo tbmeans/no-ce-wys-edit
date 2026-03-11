@@ -194,93 +194,112 @@ function deleteHandler() {
 }
 
 function leftHandler() {
-  const leftOfCursOnLine = cursor.previousSibling;
-  const rightOfCurOnLine = cursor.nextSibling;
+  const leftOfCurs = cursor.previousSibling;
+  const ltype = leftOfCurs.nodeName;
+  const ltext = leftOfCurs.textContent;
+  const char1 = leftOfCurs.textContent.at(-1);
   const curline = cursor.parentElement;
-  const lineAboveCur = curline?.previousSibling?.previousSibling; // skip <BR>
-  const paraAboveCur = curline?.parentElement?.previousSibling;
-  const isAtLinePos0 = !leftOfCursOnLine || 
-      leftOfCursOnLine.textContent.length === 0;
+  const rightOfCur = cursor.nextSibling;
+  const preline = curline.previousSibling?.previousSibling;
+  const prepara = curline.parentElement.previousSibling;
+  
+  /*  Shift char from left node to right node across cursor on same line.
+      Get nodeNames on either side of cursor, and maintain the same nodeName
+      container for the moved char for the sake of bold/italic/underline.
+      After successive left moves of cursor, the left node's textContent
+      will be empty string rather than auto-removed or null, GRANTED, THAT
+      THE TEXT NODE WAS CREATED EXPLICITLY, APPENDED, AND FILLED RATHER THAN
+      JUST ASSIGNING TO TEXTCONTENT WHEN THE LINE SPAN WAS EMPTY, WHICH WE DO,
+      and this defines cursor at line position 0. Only on moving left from 0 do
+      we then remove the empty node and put cursor at right-most text node of
+      previous line OR if above line is empty, then transfer both the empty
+      node and cursor into above empty line. At position 0 of line 0 of a
+      paragraph, transfer cursor and its empty "curnode" on the left into the
+      necessarily whitespace final line of paragraph above.
+    */
 
-  if (isAtLinePos0 && !lineAboveCur && !paraAboveCur) {
-    console.log("we are having a problem with moving back to the left after moving right across line boundary")
-    return;
-  } else if (isAtLinePos0 && !lineAboveCur) {
-    paraAboveCur.lastChild.previousSibling.previousSibling.appendChild(cursor);
-  } else if (isAtLinePos0) {
-    lineAboveCur.appendChild(cursor);
-  }
+  if (ltext.length && rightOfCur && ltype === rightOfCur.nodeName) {
+    leftOfCurs.textContent = ltext.slice(0, -1);
+    rightOfCur.textContent = char1 + rightOfCur.textContent;
 
-  if (isAtLinePos0) {
-    return;
-  }
-  // else shift char from left to right across cursor on same line:
+  } else if (ltext.length) {
+    const nexsb = ltype === '#text' && document.createTextNode('') ||
+        document.createElement(ltype);
 
-  const char1 = leftOfCursOnLine.textContent.at(-1);
-  const ltype = leftOfCursOnLine.nodeName;
-  const rtype = rightOfCurOnLine?.nodeName;
-  const nexsb = ltype === '#text' && (document.createTextNode('')) ||
-      document.createElement(ltype);
+    leftOfCurs.textContent = ltext.slice(0, -1);
+    nexsb.textContent = char1;
+    rightOfCur && curline.insertBefore(nexsb, rightOfCur) ||
+        curline.appendChild(nexsb);
 
-  nexsb.textContent = char1;
-  leftOfCursOnLine.textContent = leftOfCursOnLine.textContent.slice(0, -1);
+  } else if (preline) {
+    preline.textContent.length &&
+        curline.removeChild(curline.firstChild) /* no danglers */ ||
+            preline.appendChild(curline.firstChild);
+    preline.appendChild(cursor);
 
-  if (rtype != null && ltype === rtype) {
-    rightOfCurOnLine.textContent = char1 + rightOfCurOnLine.textContent;
-  } else if (rtype != null) {
-    cursor.parentElement.insertBefore(nexsb, rightOfCurOnLine);
-  } else {
-    cursor.parentElement.appendChild(nexsb);
+  } else if (prepara) {
+    const finline = prepara.lastChild.previousSibling;
+    /* last child is <BR>, its pre-sib is final blank line
+     */
+    finline.append(curline.firstChild, cursor);
+
   }
 
   return;
 }
 
 function rightHandler() {
-  const leftOfCursOnLine = cursor.previousSibling;
-  const rightOfCurOnLine = cursor.nextSibling;
+  const leftOfCurs = cursor.previousSibling;
+  const rightOfCur = cursor.nextSibling;
+  const rtype = rightOfCur?.nodeName;
+  const rtext = rightOfCur?.textContent;
+  const char1 = rightOfCur?.textContent?.at(0);
   const curline = cursor.parentElement;
-  const isAtEndOfLine = curline.lastChild === cursor ||
-      (rightOfCurOnLine.textContent ?? '').length === 0;
   const nexline = curline.nextSibling?.nextSibling; // skip <BR>
-  const isNoBreakBelow = nexline == null;
-  const isAtEndOfNonFinalPara = nexline?.nodeName === "BR" &&
-      nexline.nextSibling.textContent === '\xa0';  
+  const nexpara = curline.parentElement.nextSibling;
 
-  if (isAtEndOfLine && isNoBreakBelow) {
-    console.log("we are having a problem with moving back to the right after moving left across line boundary")
-    return;
-  } else if (isAtEndOfLine && isAtEndOfNonFinalPara) {
-    const nexpara = curline.parentElement.nextSibling;
-    const nex1stline = nexpara.firstChild;
-    const nex1stnode = nex1stline.firstChild;
-    nex1stnode && ( nex1stline.insertBefore(cursor, nex1stnode) ) || (
-        nex1stline.appendChild(cursor) );
-    nex1stline.insertBefore(document.createTextNode(''), cursor);
-  } else if (isAtEndOfLine) {
-    const nex1stnode = nexline.firstChild;
-    nex1stnode && ( nexline.insertBefore(cursor, nex1stnode) ) || (
-        nexline.appendChild(cursor) );
-    nexline.insertBefore(document.createTextNode(''), cursor);
-  }
+  if (rtext && rtext.length && rtype === leftOfCurs.nodeName) {
+    rightOfCur.textContent = rtext.slice(1);
+    leftOfCurs.textContent += char1;
 
-  if (isAtEndOfLine) {
-    return;
-  } // else shift char from right to left across cursor on same line:
+  } else if (rtext && rtext.length) {
+    const presb = rtype === '#text' && document.createTextNode('') ||
+        document.createElement(rtype);
 
-  const char1 = rightOfCurOnLine.textContent[0];
-  const ltype = leftOfCursOnLine.nodeName;
-  const rtype = rightOfCurOnLine.nodeName;
-  const presb = rtype === '#text' && (document.createTextNode('')) ||
-      document.createElement(rtype);
-
-  presb.textContent = char1;
-  rightOfCurOnLine.textContent = rightOfCurOnLine.textContent.slice(1);
-
-  if (ltype === rtype) {
-    leftOfCursOnLine.textContent += char1;
-  } else {
+    presb.textContent = char1;
     curline.insertBefore(presb, cursor);
+
+  } else if (nexline) {
+    nexline.firstChild && nexline.insertBefore(cursor, nexline.firstChild) ||
+        nexline.appendChild(cursor); // empty nexline
+    /*
+      Either rt. text node is empty or does not exist and must make it. */
+    rtext && nexline.insertBefore(rightOfCur, cursor) ||
+        nexline.insertBefore(document.createTextNode(''), cursor);
+
+    /*  This logic makes sure to move right-end-of-line-dangling emtpy text
+        nodes down with cursor to be cursor's left neighbor for proper position
+        zero, and elsewhere we ensure there's not a position 0 empty text node
+        already there--only an empty where cursor is--no duplicates. 
+        The previous rightHandler code was instead leaving danglers and
+        creating new empty text nodes to sit left of cursor below, so when a 
+        subsequent left move of cursor makes the cursor go back up but sit
+        right of that dangler, the leftHandler treats the right end as 
+        position 0 but there's stuff left of position 0 on the line so left
+        move action can't trigger and cursor is stuck.
+      */
+      
+  } else if (nexpara) {
+    const nexpara1stLine = nexpara.firstChild;
+    const nexpara1stLine1stText = nexpara.firstChild.firstChild;
+
+    nexpara1stLine1stText && 
+        nexpara1stLine.insertBefore(cursor, nexpara1stLine1stText) ||
+            nexpara1stLine.appendChild(cursor);
+
+    rtext && nexpara1stLine.insertBefore(rightOfCur, cursor) ||
+        nexpara1stLine.insertBefore(document.createTextNode(''), cursor);
+
   }
 
   return;
